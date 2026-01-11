@@ -337,13 +337,15 @@ def align_chapters_to_keepmarks(chapters, keepmarks):
     return aligned_chapters
 
 
-def download_audio(url: str, max_attempts=4):
+def download_audio(url: str, args, max_attempts=4):
     """
     Download audio data in chunks
     Return as bytearray
     """
 
     chunk_size = 128 * 1024  # 128 kByte
+    if args.silent:
+        print("Recording ..")
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -353,11 +355,12 @@ def download_audio(url: str, max_attempts=4):
                 response.raise_for_status()
                 for chunk in response.iter_content(chunk_size=chunk_size):
                     data += chunk
-                    print(
-                        f"\rDownloading {url} ... {len(data)/(1024*1024):.1f}/{content_length/(1024*1024):.1f} MByte",
-                        end=" ",
-                        flush=True,
-                    )
+                    if not args.silent:
+                        print(
+                            f"\rDownloading {url} ... {len(data)/(1024*1024):.1f}/{content_length/(1024*1024):.1f} MByte",
+                            end=" ",
+                            flush=True,
+                        )
             print("done")
             return data
 
@@ -606,6 +609,13 @@ def main():
         default=False,
         action="store_true",
     )
+    parser.add_argument(
+        "-s",
+        "--silent",
+        help="Dont show progress (default: %(default)s)",
+        default=False,
+        action="store_true",
+    )
     parser.add_argument("ShowTitle", help='The show\'s title (e.g. "Morning Show")')
     parser.add_argument(
         "TargetDirectory",
@@ -685,7 +695,7 @@ def main():
         #       that are not needed afterwards.
         loopStreamId = broadcast_json["streams"][0]["loopStreamId"]
         url = STATION_INFO["shoutcast_base_url"] % loopStreamId
-        broadcast_audio = download_audio(url)
+        broadcast_audio = download_audio(url, args)
         if not broadcast_audio:
             # download failed. try next broadcast
             continue
